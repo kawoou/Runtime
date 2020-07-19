@@ -44,6 +44,30 @@ public func createInstance(of type: Any.Type, constructor: ((PropertyInfo) throw
         return try buildStruct(type: type, constructor: constructor)
     case .class:
         return try buildClass(type: type)
+    case .enum:
+        return try buildEnum(type: type)
+    default:
+        throw RuntimeError.unableToBuildType(type: type)
+    }
+}
+
+public func createEnumInstance<T>(case target: Case? = nil) throws -> T {
+    if let value = try createEnumInstance(of: T.self, case: target) as? T {
+        return value
+    }
+
+    throw RuntimeError.unableToBuildType(type: T.self)
+}
+
+public func createEnumInstance(of type: Any.Type, case target: Case? = nil) throws -> Any {
+    if let defaultConstructor = type as? DefaultConstructor.Type {
+        return defaultConstructor.init()
+    }
+
+    let kind = Kind(type: type)
+    switch kind {
+    case .enum:
+        return try buildEnum(type: type, case: target)
     default:
         throw RuntimeError.unableToBuildType(type: type)
     }
@@ -71,6 +95,20 @@ func buildClass(type: Any.Type) throws -> Any {
     try setProperties(typeInfo: info, pointer: UnsafeMutableRawPointer(mutating: value))
 
     return unsafeBitCast(value, to: AnyObject.self)
+}
+
+func buildEnum(type: Any.Type, case target: Case? = nil) throws -> Any {
+    let info = try typeInfo(of: type)
+
+    guard info.numberOfPayloadEnumCases == 0, info.numberOfEnumCases > 0 else {
+        throw RuntimeError.unableToBuildType(type: type)
+    }
+
+    var index = info.cases.firstIndex { $0.name == target?.name } ?? 0
+    let pointer = UnsafeMutableRawPointer.allocate(byteCount: info.size, alignment: info.alignment)
+    pointer.copyMemory(from: &index, byteCount: info.size)
+    defer { pointer.deallocate() }
+    return getters(type: type).get(from: pointer)
 }
 
 func setProperties(typeInfo: TypeInfo,

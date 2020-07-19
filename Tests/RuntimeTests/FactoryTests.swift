@@ -30,7 +30,9 @@ class FactoryTests: XCTestCase {
             ("testStruct", testStruct),
             ("testStructUntyped", testStructUntyped),
             ("testClass", testClass),
-            ("testGenericClass", testGenericClass)
+            ("testGenericClass", testGenericClass),
+            ("testEnum", testEnum),
+            ("testEnumWithCase", testEnumWithCase)
         ]
     }
     
@@ -71,6 +73,17 @@ class FactoryTests: XCTestCase {
         let a: A<Int> = try createInstance()
         XCTAssert(a.a == 0)
     }
+
+    func testEnum() throws {
+        let result: PetKind = try createEnumInstance()
+        XCTAssert(result == PetKind.cat)
+    }
+
+    func testEnumWithCase() throws {
+        let info = try typeInfo(of: PetKind.self)
+        let result: PetKind = try createEnumInstance(case: info.cases.first { $0.name == "snake" }! )
+        XCTAssert(result == PetKind.snake)
+    }
 }
 
 fileprivate struct PersonStruct {
@@ -84,10 +97,12 @@ fileprivate struct PersonStruct {
 fileprivate struct PetStruct {
     var name = "Nacho"
     var age = 12
+    var kind: PetKind = .dog
     init() {}
-    init(name: String, age: Int) {
+    init(name: String, age: Int, kind: PetKind) {
         self.name = name
         self.age = age
+        self.kind = kind
     }
 }
 
@@ -102,9 +117,18 @@ fileprivate class PersonClass<T> {
 fileprivate class PetClass {
     var name = "Nacho"
     var age = 12
+    var kind: PetKind = .dog
     init() {}
-    init(name: String, age: Int) {
+    init(name: String, age: Int, kind: PetKind) {
         self.name = name
         self.age = age
+        self.kind = kind
     }
+}
+
+fileprivate enum PetKind {
+    case cat
+    case dog
+    case pig
+    case snake
 }
